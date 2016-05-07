@@ -1,3 +1,5 @@
+package com.husky.print.classes;
+
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
@@ -58,6 +60,11 @@ public class DriveQuickstart {
         }
     }
 
+    private static String getFolderId(String userId){
+    	String folderId  = "0B9172u_0VuSbdEpuTXpWZ2JpRzA";
+    	return folderId;
+    } 
+    
     /**
      * Creates an authorized Credential object.
      * @return an authorized Credential object.
@@ -101,8 +108,13 @@ public class DriveQuickstart {
         // Build a new authorized API client service.
         Drive service = getDriveService();
 
-        getFilesToPrint(service);
+        // Get files to print
+        List<File> files = getFilesToPrint(service);
         
+        // Email files to print
+        emailFilesToPrint(service, files);
+		
+        if(1==1) return;
         
         // Print the names and IDs for up to 10 files.
         FileList result = service.files().list()
@@ -110,7 +122,7 @@ public class DriveQuickstart {
              .setPageSize(1)
              .setFields("nextPageToken, files(id, name)")
              .execute();
-        List<File> files = result.getFiles();
+        files = result.getFiles();
         if (files == null || files.size() == 0) {
             System.out.println("No files found.");
         } else {
@@ -121,28 +133,38 @@ public class DriveQuickstart {
         }
     }
     
+    /**
+     * Emails each file in the given list to printer
+     * @param service DriveService object
+     * @param files List of Files to print
+     */
+    private static void emailFilesToPrint(Drive service, List<File> files){
+    	for (File file : files) {
+            System.out.printf("%s (%s)\n", file.getName(), file.getId());
+        }
+    }
     
+    /**
+     * Returns list of files to print from selected folder of a user
+     * @param service DriveService object
+     * @return List of Files to print
+     * @throws IOException
+     */
     private static List<File> getFilesToPrint(Drive service) throws IOException{
-    	String folderId = "0B9172u_0VuSbVnFILXh5YU9wWWs";
+    	List<File> result = new ArrayList<File>();
     	
+    	String folderId = getFolderId("user/id-todo");
     	Files.List request = service.files().list()
     			.setFields("nextPageToken, files(id, name)")
     			.setQ("'" + folderId + "' in parents")
     			.setPageSize(1000);
 
-
-    	List<File> result = new ArrayList<File>();
         do {
         	FileList response = request.execute();
-        	List<File> files = response.getFiles();
+        	List<File> files  = response.getFiles();
         	
-        	if (files == null || files.size() == 0) { System.out.println("No files found."); }
-        	else {
-                System.out.println("Files:");
-                for (File file : files) {
-                	result.add(file);
-                    System.out.printf("%s (%s)\n", file.getName(), file.getId());
-                }
+        	if (!(files == null || files.size() == 0)) {
+        		result.addAll(files);
             }
         	request.setPageToken(response.getNextPageToken());
         } while (request.getPageToken() != null && request.getPageToken().length() > 0);
